@@ -70,38 +70,9 @@ app.route('/api/users')
   }
 });
 
-app.route('/api/users/:_id/exercises')
-.get(async (req, res) => {
-  const userId = req.params._id;
 
-  const user = await User.findById(userId);
-  // console.log(user.username);
-  if(!user) {
-    return res.status(404).json({error: 'User not found'})
-    }
-  try{
-    const exercises = await Exercise.find({username:user.username}, 'description duration date');
-
-    const log = exercises.map(e => ({
-      description: e.description, 
-      duration: e.duration,
-      date: new Date(e.date).toDateString()
-    }));
-    
-    // console.log(exercises);
-    res.status(200).json({
-      id: user.id,
-      username: user.username,
-      exercises:exercises
-    }); // Send the formatted response
-  }
-  catch (err){
-    console.error(err);
-    res.status(500).json({error: 'Something went wrong getting user logs'});
-  }
-})
 // Route to create an exercise for a user
-.post( async (req, res) => {
+app.post('/api/users/:_id/exercises', async (req, res) => {
   try {
     // Get user ID from route parameter
     const userId = req.params._id;
@@ -141,7 +112,7 @@ app.route('/api/users/:_id/exercises')
 
     // Return the saved exercise data in JSON format
     res.status(201).json({
-      _id:savedExercise._id,
+      _id: userId,
       username: savedExercise.username,
       description: savedExercise.description,
       duration: savedExercise.duration,
