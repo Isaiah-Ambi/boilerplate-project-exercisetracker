@@ -10,7 +10,7 @@ const mongoose = require('mongoose')
 const uri = process.env.MONGO_URI
 console.log(uri)
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGO_URI);
 
 app.use(express.urlencoded({extended: true}));
 
@@ -26,11 +26,12 @@ let userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-let exerciseSchema = new mongoose.Schema({
+const exerciseSchema = new mongoose.Schema({
+  user_id: {type: String, required: true},
   username: String,
   description: {type:String, required: true},
   duration: {type: Number, required: true},
-  date: Date,
+  date: {type:Date},
 });
 
 const Exercise = mongoose.model('Exercise', exerciseSchema);
@@ -38,8 +39,12 @@ const Exercise = mongoose.model('Exercise', exerciseSchema);
 
 app.route('/api/users')
 .get(async (req, res) => {
-  const users = await User.find({});
+  try {const users = await User.find({});
   res.send(users);
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ message: 'something went wrong' });
+  }
 })// Route to create a user
 .post(async (req, res) => {
   try {
@@ -89,23 +94,63 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 
     // Create a new exercise with username and form data
     const newExercise = new Exercise({
+      user_id: userId,
       username: user.username,
       description,
       duration,
-      date: date ? new Date(date) : new Date(), // Handle optional date
+      date: new Date(date ? date : new Date()), // Handle optional date
     });
+
+    // Format the date before saving
+    // newExercise.date = newExercise.date.toDateString();
 
     // Save the new exercise document
     const savedExercise = await newExercise.save();
 
+    
+
     // Return the saved exercise data in JSON format
-    res.status(201).json(savedExercise);
+    res.status(201).json({
+      _id:savedExercise._id,
+      username: savedExercise.username,
+      description: savedExercise.description,
+      duration: savedExercise.duration,
+      date: new Date(savedExercise.date).toDateString()
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error creating exercise' });
   }
 });
 
+
+app.get('/api/users/:_id/logs',async (req, res) => {
+  const userId = req.params._id;
+
+  const user = await User.findById(userId);
+  // console.log(user.username);
+  if(!user) {
+    return res.status(404).json({error: 'User not found'})
+    }
+  try{
+    const exercises = await Exercise.find({username:user.username});
+    let exercises2 = []
+    exercises.forEach(exercise => {
+      let date = exercise.date.toDateString()
+      exercise.date = date; // Format the date
+      console.log(exercise.date);
+      exercises2.push(exercise);
+      
+    });
+    // console.log(exercises);
+    res.status(200).json(exercises2); // Send the formatted response
+  }
+  catch (err){
+    console.error(err);
+    res.status(500).json({error: 'Something went wrong getting user logs'});
+  }
+  
+});
 
 
 
